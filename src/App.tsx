@@ -23,7 +23,23 @@ import { InteractiveMap } from './components/InteractiveMap';
 import { SOSDistressForm } from './components/SOSDistressForm';
 import { AIAdvisoryChat } from './components/AIAdvisoryChat';
 import { EmergencySurvivalGuide } from './components/EmergencySurvivalGuide';
-import { RiverStation, UrgentAlert, ReliefCamp, SOSDistressReport } from './types';
+import { VoiceBroadcastPlayer } from './components/VoiceBroadcastPlayer';
+import { BarrageAndWeatherTracker } from './components/BarrageAndWeatherTracker';
+import { RoadBreachTracker } from './components/RoadBreachTracker';
+import { FamilyReunificationDesk } from './components/FamilyReunificationDesk';
+import { NearbySafePlacesLocator } from './components/NearbySafePlacesLocator';
+import { OfflineIndicator } from './components/OfflineIndicator';
+import { 
+  RiverStation, 
+  UrgentAlert, 
+  ReliefCamp, 
+  SOSDistressReport,
+  BarrageInflow,
+  WeatherForecastDistrict,
+  RoadBreachReport,
+  MissingPersonEntry,
+  ReliefSupplyInventory
+} from './types';
 import { playGentlePing } from './utils/soundAlert';
 
 export default function App() {
@@ -35,6 +51,11 @@ export default function App() {
   const [alerts, setAlerts] = useState<UrgentAlert[]>([]);
   const [shelters, setShelters] = useState<ReliefCamp[]>([]);
   const [distressReports, setDistressReports] = useState<SOSDistressReport[]>([]);
+  const [barrages, setBarrages] = useState<BarrageInflow[]>([]);
+  const [weatherForecasts, setWeatherForecasts] = useState<WeatherForecastDistrict[]>([]);
+  const [roadBreaches, setRoadBreaches] = useState<RoadBreachReport[]>([]);
+  const [missingPersons, setMissingPersons] = useState<MissingPersonEntry[]>([]);
+  const [reliefSupplies, setReliefSupplies] = useState<ReliefSupplyInventory[]>([]);
 
   const [selectedStationModal, setSelectedStationModal] = useState<RiverStation | null>(null);
   const [selectedDistrictForCamps, setSelectedDistrictForCamps] = useState<string | undefined>(undefined);
@@ -53,24 +74,39 @@ export default function App() {
   const fetchAllData = useCallback(async (isBackground = false) => {
     if (!isBackground) setIsLoading(true);
     try {
-      const [stRes, alRes, shRes, repRes] = await Promise.all([
+      const [stRes, alRes, shRes, repRes, barRes, wfRes, rbRes, mpRes, rsRes] = await Promise.all([
         fetch('/api/stations'),
         fetch('/api/alerts'),
         fetch('/api/shelters'),
         fetch('/api/sos-reports'),
+        fetch('/api/barrages'),
+        fetch('/api/weather'),
+        fetch('/api/road-breaches'),
+        fetch('/api/missing-persons'),
+        fetch('/api/relief-inventory'),
       ]);
 
-      const [stData, alData, shData, repData] = await Promise.all([
+      const [stData, alData, shData, repData, barData, wfData, rbData, mpData, rsData] = await Promise.all([
         stRes.json(),
         alRes.json(),
         shRes.json(),
         repRes.json(),
+        barRes.json(),
+        wfRes.json(),
+        rbRes.json(),
+        mpRes.json(),
+        rsRes.json(),
       ]);
 
       if (stData.stations) setStations(stData.stations);
       if (alData.alerts) setAlerts(alData.alerts);
       if (shData.shelters) setShelters(shData.shelters);
       if (repData.reports) setDistressReports(repData.reports);
+      if (barData.barrages) setBarrages(barData.barrages);
+      if (wfData.forecasts) setWeatherForecasts(wfData.forecasts);
+      if (rbData.breaches) setRoadBreaches(rbData.breaches);
+      if (mpData.persons) setMissingPersons(mpData.persons);
+      if (rsData.inventory) setReliefSupplies(rsData.inventory);
 
       setLastSyncTime(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     } catch (e) {
@@ -110,6 +146,46 @@ export default function App() {
       return false;
     } catch (e) {
       console.error('Failed to submit SOS report:', e);
+      return false;
+    }
+  };
+
+  // Handle Road issue submission
+  const handleSubmitRoadReport = async (report: Partial<RoadBreachReport>): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/road-breaches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(report),
+      });
+      const data = await res.json();
+      if (res.ok && data.report) {
+        setRoadBreaches(prev => [data.report, ...prev]);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error('Failed to submit road breach report:', e);
+      return false;
+    }
+  };
+
+  // Handle Missing person registration
+  const handleRegisterPerson = async (entry: Partial<MissingPersonEntry>): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/missing-persons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      });
+      const data = await res.json();
+      if (res.ok && data.person) {
+        setMissingPersons(prev => [data.person, ...prev]);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error('Failed to register person:', e);
       return false;
     }
   };
@@ -169,6 +245,9 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Regional Dialect Voice Announcement Loudspeaker Player */}
+        <VoiceBroadcastPlayer language={language} />
+
         {/* Overview Metrics Bar on all views */}
         <MetricsOverview
           stations={stations}
@@ -285,6 +364,39 @@ export default function App() {
           <AlertsSection alerts={alerts} language={language} />
         )}
 
+        {/* Tab: Google Maps Grounded Safe Places & Emergency Locator */}
+        {activeTab === 'nearby' && (
+          <NearbySafePlacesLocator language={language} />
+        )}
+
+        {/* Tab: Upstream Barrages & Weather Radar */}
+        {activeTab === 'barrages' && (
+          <BarrageAndWeatherTracker
+            barrages={barrages}
+            forecasts={weatherForecasts}
+            language={language}
+          />
+        )}
+
+        {/* Tab: Road Passability & Embankments */}
+        {activeTab === 'roads' && (
+          <RoadBreachTracker
+            reports={roadBreaches}
+            language={language}
+            onSubmitReport={handleSubmitRoadReport}
+          />
+        )}
+
+        {/* Tab: Missing Persons & Relief Supplies */}
+        {activeTab === 'family' && (
+          <FamilyReunificationDesk
+            persons={missingPersons}
+            supplies={reliefSupplies}
+            language={language}
+            onRegisterPerson={handleRegisterPerson}
+          />
+        )}
+
         {/* Tab 3: Relief Camps */}
         {activeTab === 'shelters' && (
           <ReliefCampsSection
@@ -373,6 +485,9 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Offline Status Badge for PWA */}
+      <OfflineIndicator language={language} />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Bot, Send, Sparkles, AlertCircle, PhoneCall, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Bot, Send, Sparkles, AlertCircle, PhoneCall, CheckCircle2, ShieldAlert, MapPin, ExternalLink, Navigation } from 'lucide-react';
+import { MapsPlaceResult } from '../types';
 
 interface AIAdvisoryChatProps {
   language: 'en' | 'hi';
@@ -15,6 +16,7 @@ export const AIAdvisoryChat: React.FC<AIAdvisoryChatProps> = ({ language }) => {
     q: string;
     a: string;
     source?: string;
+    mapsPlaces?: MapsPlaceResult[];
   }[]>([
     {
       q: isHi ? 'बाढ़ का पानी घर में घुसने लगे तो तुरंत क्या करना चाहिए?' : 'Flood water is entering my home, what are the immediate steps?',
@@ -36,16 +38,18 @@ export const AIAdvisoryChat: React.FC<AIAdvisoryChatProps> = ({ language }) => {
 
   const quickPromptChips = isHi ? [
     'बाढ़ का पानी घर में घुस रहा है, क्या करें?',
+    'निकटतम आपातकालीन अस्पताल व एंटी-वेनम केंद्र कहां हैं?',
     'बाढ़ के पानी को पीने योग्य कैसे बनाएं?',
     'बाढ़ में सांप काटने पर प्राथमिक उपचार क्या है?',
     'पानी में फंसे होने पर बचाव दल को कैसे संकेत दें?',
-    'बाढ़ के दौरान होने वाली बीमारियों से कैसे बचें?'
+    'ऊंचे सरकारी राहत शिविर और बोट पॉइंट कहां हैं?'
   ] : [
     'Water entering home, immediate safety steps?',
+    'Where is the nearest emergency hospital & anti-venom center?',
     'How to purify flood water for drinking?',
     'Snakebite emergency protocol during floods',
     'How to signal rescue boats from a marooned roof?',
-    'Waterborne diseases prevention during floods'
+    'Where are elevated disaster relief camps and boat ghats?'
   ];
 
   const handleSend = async (questionToSend?: string) => {
@@ -71,7 +75,12 @@ export const AIAdvisoryChat: React.FC<AIAdvisoryChatProps> = ({ language }) => {
       if (data.answer) {
         setConversation(prev => [
           ...prev,
-          { q: text, a: data.answer, source: data.source }
+          { 
+            q: text, 
+            a: data.answer, 
+            source: data.source,
+            mapsPlaces: data.mapsPlaces 
+          }
         ]);
       }
     } catch (err) {
@@ -155,6 +164,47 @@ export const AIAdvisoryChat: React.FC<AIAdvisoryChatProps> = ({ language }) => {
                 <div className="whitespace-pre-line text-slate-100 font-sans">
                   {msg.a}
                 </div>
+
+                {/* Google Maps Grounded Places & Links */}
+                {msg.mapsPlaces && msg.mapsPlaces.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-slate-800 space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-blue-400">
+                      <MapPin className="w-3.5 h-3.5 text-red-400" />
+                      <span>{isHi ? 'गूगल मैप्स सत्यापित नजदीकी केंद्र:' : 'Google Maps Grounded Locations:'}</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {msg.mapsPlaces.map((place, pIdx) => (
+                        <div key={pIdx} className="bg-slate-950/80 border border-slate-800 rounded-lg p-2.5 space-y-1 text-xs">
+                          <p className="font-bold text-white line-clamp-1">{place.title}</p>
+                          {place.address && (
+                            <p className="text-[11px] text-slate-400 line-clamp-1">{place.address}</p>
+                          )}
+                          <div className="pt-1 flex items-center justify-between gap-2">
+                            <a
+                              href={place.uri}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[11px] text-blue-400 hover:underline flex items-center gap-1 font-medium"
+                            >
+                              <span>{isHi ? 'गूगल मैप्स' : 'Maps Link'}</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                            <a
+                              href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place.title + ' ' + (place.address || district))}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] px-2 py-0.5 bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white rounded border border-blue-500/30 flex items-center gap-1 font-medium transition-colors"
+                            >
+                              <Navigation className="w-2.5 h-2.5" />
+                              <span>{isHi ? 'दिशा' : 'Route'}</span>
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {msg.source && (
                   <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
                     <span>Protocol: {msg.source}</span>

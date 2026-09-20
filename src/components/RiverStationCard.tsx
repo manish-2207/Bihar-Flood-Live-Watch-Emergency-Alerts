@@ -8,8 +8,18 @@ import {
   Droplets, 
   LineChart, 
   LifeBuoy,
-  ShieldCheck
+  ShieldCheck,
+  Activity
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  ReferenceLine,
+  Tooltip,
+  YAxis,
+  XAxis
+} from 'recharts';
 import { RiverStation } from '../types';
 
 interface RiverStationCardProps {
@@ -18,6 +28,41 @@ interface RiverStationCardProps {
   onSelectStation: (station: RiverStation) => void;
   onViewCamps: (district: string) => void;
 }
+
+interface SparklineTooltipProps {
+  active?: boolean;
+  payload?: Array<{ value: number }>;
+  label?: string;
+  dangerLevel: number;
+  isHi: boolean;
+}
+
+const SparklineTooltip: React.FC<SparklineTooltipProps> = ({
+  active,
+  payload,
+  label,
+  dangerLevel,
+}) => {
+  if (active && payload && payload.length) {
+    const val = Number(payload[0].value);
+    const diff = val - dangerLevel;
+    const isAbove = diff >= 0;
+    return (
+      <div className="bg-slate-950/95 border border-slate-700/90 px-2 py-1 rounded shadow-xl text-[11px] backdrop-blur-sm pointer-events-none">
+        <div className="text-slate-400 text-[10px] font-mono">{label}</div>
+        <div className="flex items-center gap-1 font-bold">
+          <span className={isAbove ? 'text-red-400' : 'text-slate-200'}>
+            {val.toFixed(2)} m
+          </span>
+          <span className={`text-[10px] ${isAbove ? 'text-red-400' : 'text-emerald-400'}`}>
+            ({isAbove ? `+${diff.toFixed(2)}m` : `${diff.toFixed(2)}m`})
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
 
 export const RiverStationCard: React.FC<RiverStationCardProps> = ({
   station,
@@ -71,6 +116,34 @@ export const RiverStationCard: React.FC<RiverStationCardProps> = ({
   };
 
   const statusBadge = getStatusBadge();
+
+  // Mini Sparkline Data from 24h Telemetry
+  const chartData = (station.history24h && station.history24h.length > 0)
+    ? station.history24h
+    : [
+        { time: '00:00', level: Number((station.currentLevel - (station.trend === 'rising' ? 0.35 : -0.35)).toFixed(2)) },
+        { time: '04:00', level: Number((station.currentLevel - (station.trend === 'rising' ? 0.25 : -0.25)).toFixed(2)) },
+        { time: '08:00', level: Number((station.currentLevel - (station.trend === 'rising' ? 0.18 : -0.18)).toFixed(2)) },
+        { time: '12:00', level: Number((station.currentLevel - (station.trend === 'rising' ? 0.10 : -0.10)).toFixed(2)) },
+        { time: '16:00', level: Number((station.currentLevel - (station.trend === 'rising' ? 0.04 : -0.04)).toFixed(2)) },
+        { time: '20:00', level: Number(station.currentLevel.toFixed(2)) },
+      ];
+
+  const levels = chartData.map(d => d.level);
+  const minVal = Math.min(...levels, station.dangerLevel);
+  const maxVal = Math.max(...levels, station.dangerLevel);
+  const yDomain = [
+    Number((minVal - 0.15).toFixed(2)),
+    Number((maxVal + 0.15).toFixed(2))
+  ];
+
+  const chartColor = isSevere
+    ? '#ef4444'
+    : isAboveDanger
+    ? '#f43f5e'
+    : station.status === 'warning'
+    ? '#f59e0b'
+    : '#06b6d4';
 
   return (
     <div className={`bg-slate-900 border rounded-xl overflow-hidden transition-all hover:shadow-xl ${
@@ -248,6 +321,64 @@ export const RiverStationCard: React.FC<RiverStationCardProps> = ({
           <div className="flex items-center gap-1 text-blue-300 font-semibold">
             <Droplets className="w-3.5 h-3.5 text-blue-400" />
             <span>{(station.dischargeCusec).toLocaleString('en-IN')} {isHi ? 'क्यूसेक' : 'cusec'}</span>
+          </div>
+        </div>
+
+        {/* 24-Hour Water Level Trend Mini Sparkline Chart (Recharts) */}
+        <div className="bg-slate-950/75 border border-slate-800/90 rounded-lg p-2.5 space-y-1.5">
+          <div className="flex items-center justify-between text-[11px] px-0.5">
+            <span className="text-slate-300 font-medium flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-blue-400" />
+              <span>{isHi ? '24 घंटे का जलप्रवाह ग्राफ' : '24h Water Level Sparkline'}</span>
+            </span>
+            <div className="flex items-center gap-2 text-[10px]">
+              <span className="flex items-center gap-1 text-slate-400">
+                <span className="w-2.5 border-t-2 border-dashed border-red-500 inline-block"></span>
+                <span className="text-red-400 font-semibold">DL ({station.dangerLevel.toFixed(1)}m)</span>
+              </span>
+              <span className="font-mono text-slate-400">
+                {chartData[0]?.time} → {chartData[chartData.length - 1]?.time}
+              </span>
+            </div>
+          </div>
+
+          <div className="h-16 w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 4, right: 3, left: 3, bottom: 2 }}>
+                <defs>
+                  <linearGradient id={`sparkline-grad-${station.id}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chartColor} stopOpacity={0.45} />
+                    <stop offset="100%" stopColor={chartColor} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <YAxis domain={yDomain} hide />
+                <XAxis dataKey="time" hide />
+                <Tooltip
+                  content={
+                    <SparklineTooltip
+                      dangerLevel={station.dangerLevel}
+                      isHi={isHi}
+                    />
+                  }
+                />
+                <ReferenceLine
+                  y={station.dangerLevel}
+                  stroke="#ef4444"
+                  strokeDasharray="3 3"
+                  strokeWidth={1.5}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="level"
+                  stroke={chartColor}
+                  strokeWidth={2}
+                  fill={`url(#sparkline-grad-${station.id})`}
+                  isAnimationActive={true}
+                  dot={{ r: 2, fill: chartColor, strokeWidth: 0 }}
+                  activeDot={{ r: 4, fill: '#ffffff', stroke: chartColor, strokeWidth: 2 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
 

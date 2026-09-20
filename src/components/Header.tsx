@@ -10,9 +10,14 @@ import {
   MapPin, 
   Bot, 
   BookOpen, 
-  Radio
+  Radio,
+  CloudRain,
+  Car,
+  Users,
+  Compass
 } from 'lucide-react';
 import { playUrgentAlertSound } from '../utils/soundAlert';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface HeaderProps {
   language: 'en' | 'hi';
@@ -42,10 +47,14 @@ export const Header: React.FC<HeaderProps> = ({
   const navItems = [
     { id: 'telemetry', labelEn: 'Water Levels', labelHi: 'जल स्तर व गेज', icon: Waves },
     { id: 'alerts', labelEn: 'Urgent Alerts', labelHi: 'आपात चेतावनी', icon: AlertTriangle, badge: severeCount > 0 ? severeCount : null },
+    { id: 'nearby', labelEn: 'Safe Places & Maps', labelHi: 'नजदीकी आश्रय व मैप्स', icon: Compass, badge: 'Maps' },
+    { id: 'barrages', labelEn: 'Inflows & Rain', labelHi: 'बराज व वर्षा', icon: CloudRain },
+    { id: 'roads', labelEn: 'Roads & Bundhs', labelHi: 'सड़क व तटबंध', icon: Car },
+    { id: 'family', labelEn: 'Family & Supplies', labelHi: 'लापता व राहत', icon: Users },
     { id: 'shelters', labelEn: 'Relief Camps', labelHi: 'राहत शिविर', icon: LifeBuoy },
     { id: 'map', labelEn: 'River Map', labelHi: 'नदी मानचित्र', icon: MapPin },
-    { id: 'sos', labelEn: 'SOS Help', labelHi: 'एसओएस मदद', icon: ShieldAlert, highlight: true },
-    { id: 'advisor', labelEn: 'AI Safety Advisor', labelHi: 'एआई सलाह', icon: Bot },
+    { id: 'sos', labelEn: 'SOS Rescue', labelHi: 'एसओएस मदद', icon: ShieldAlert, highlight: true },
+    { id: 'advisor', labelEn: 'AI Advisor', labelHi: 'एआई सलाह', icon: Bot },
     { id: 'guide', labelEn: 'Survival Guide', labelHi: 'सुरक्षा निर्देश', icon: BookOpen },
   ];
 
@@ -123,14 +132,15 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Mobile utilities toggle */}
-            <div className="flex md:hidden items-center gap-2">
+            <div className="flex md:hidden items-center gap-1.5">
+              <PWAInstallButton language={language} />
               <button
                 type="button"
                 id="toggle-lang-mobile"
                 onClick={() => onLanguageChange(isHi ? 'en' : 'hi')}
-                className="px-2.5 py-1 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-700"
+                className="px-2 py-1 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-700"
               >
-                {isHi ? 'English' : 'हिन्दी'}
+                {isHi ? 'En' : 'हिं'}
               </button>
               <button
                 type="button"
@@ -148,8 +158,11 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Controls: Audio Siren, Language switcher */}
+          {/* Controls: Audio Siren, Language switcher, PWA Install */}
           <div className="hidden md:flex items-center gap-3 self-end md:self-center">
+            {/* PWA Install Button */}
+            <PWAInstallButton language={language} />
+
             {/* Siren audio control */}
             <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-lg border border-slate-800">
               <button
