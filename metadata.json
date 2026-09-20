@@ -1,0 +1,6 @@
+{
+  "name": "Bihar Flood Live Watch & Emergency Alerts",
+  "description": "Real-time river water level monitoring, danger mark tracking, urgent safety alerts, relief camps, and emergency rescue assistance for Bihar residents.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
